@@ -159,7 +159,7 @@ pub fn elf_to_tbf<W: Write>(
                     && segment.filesz > 0
                     && section_exists_in_segment(input, segment)
                 {
-                    println!("fixed_address_flash: {:x?}", fixed_address_flash);
+                    println!("finding fixed_address_flash: {:x?}", fixed_address_flash);
                     // If this is standard Tock PIC, then this virtual address
                     // will be at 0x80000000. Otherwise, we interpret this to
                     // mean that the binary was compiled for a fixed address in
@@ -184,6 +184,7 @@ pub fn elf_to_tbf<W: Write>(
     if fixed_address_flash_pic {
         fixed_address_flash = None;
     }
+    println!("fixed_address_flash = {:x?}", fixed_address_flash);
 
     // Do RAM address.
     // Get all symbols in the symbol table section if it exists.
@@ -215,6 +216,13 @@ pub fn elf_to_tbf<W: Write>(
 
     for s in &sections_sort {
         let section = &input.sections[s.0];
+        println!("Examining section {:?}", section.shdr);
+
+        if section.shdr.name == ".tbf_header" {
+            fixed_address_flash = fixed_address_flash.map(|v| v + section.shdr.size as u32);
+            println!("Adjusting fixed_address_flash by {:x} bytes to {:x?}",
+                    section.shdr.size, fixed_address_flash);
+        }
 
         // Count write only sections as writeable flash regions.
         if section.shdr.name.contains(".wfr") && section.shdr.size > 0 {
@@ -257,6 +265,7 @@ pub fn elf_to_tbf<W: Write>(
         storage_ids,
         kernel_version,
     );
+    println!("header_length = {}", header_length);
     // If a protected region size was passed, confirm the header will fit.
     // Otherwise, use the header size as the protected region size.
     let protected_region_size =
@@ -378,7 +387,7 @@ pub fn elf_to_tbf<W: Write>(
             entry_point_found = true;
 
             if verbose {
-                println!("Entry point is in {} section", section.shdr.name);
+                println!("Entry point is in {} section at {:#x}", section.shdr.name, input.ehdr.entry);
             }
             // init_fn_offset is specified relative to the end of the TBF
             // header.
@@ -438,6 +447,7 @@ pub fn elf_to_tbf<W: Write>(
                     section.shdr.name, binary_index
                 );
             }
+            println!("Placing section {} at 0x{:x}", section.shdr.name, binary.len());
             binary.extend(&section.data);
 
             // Check if this is a writeable flash region. If so, we need to
