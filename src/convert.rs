@@ -213,6 +213,13 @@ pub fn elf_to_tbf<W: Write>(
     for s in &sections_sort {
         let section = &input.sections[s.0];
 
+        // Adjust the fixed address by the size of the tbf_header.
+        if section.shdr.name == ".tbf_header" {
+            fixed_address_flash = fixed_address_flash.map(|v| v + section.shdr.size as u32);
+            println!("Adjusting fixed_address_flash by {:x} bytes to {:x?}",
+                    section.shdr.size, fixed_address_flash);
+        }
+
         // Count write only sections as writeable flash regions.
         if section.shdr.name.contains(".wfr") && section.shdr.size > 0 {
             writeable_flash_regions_count += 1;
