@@ -214,6 +214,14 @@ pub struct Opt {
         help = "Add an 4096-bit RSA signature credential using this private key"
     )]
     pub rsa4096_private_key: Option<PathBuf>,
+
+    #[arg(
+        long = "total-size-multiple",
+        id = "total-size-multiple",
+        help = "Pad the total size of the TBF to a multiple of some number",
+        value_parser=clap_num::maybe_hex::<usize>,
+    )]
+    pub total_size_multiple: Option<usize>,
 }
 
 mod test {

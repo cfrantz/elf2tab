@@ -141,6 +141,7 @@ pub fn elf_to_tbf(
     sha384: bool,
     sha512: bool,
     rsa4096_private_key: Option<PathBuf>,
+    total_size_multiple: Option<usize>,
 ) -> io::Result<()> {
     let package_name = package_name.unwrap_or_default();
 
@@ -179,6 +180,7 @@ pub fn elf_to_tbf(
 
     /// Specify how elf2tab should add trailing padding to the end of the TBF
     /// file.
+    #[derive(Debug)]
     enum TrailingPadding {
         /// Make sure the entire TBF is a power of 2 in size, so add any
         /// necessary padding to make that happen.
@@ -194,11 +196,15 @@ pub fn elf_to_tbf(
     // - RISC_V: make sure the entire TBF is a multiple of 4 to meet TBF
     //   alignment requirements.
     // - x86: use 4k padding to match page size.
-    let trailing_padding = match elf_file.ehdr.e_machine {
-        elf::abi::EM_ARM => Some(TrailingPadding::TotalSizePowerOfTwo),
-        elf::abi::EM_RISCV => Some(TrailingPadding::TotalSizeMultiple(4)),
-        elf::abi::EM_386 => Some(TrailingPadding::TotalSizeMultiple(4096)),
-        _ => None,
+    let trailing_padding = if let Some(tsm) = total_size_multiple {
+            Some(TrailingPadding::TotalSizeMultiple(tsm))
+    } else {
+        match elf_file.ehdr.e_machine {
+            elf::abi::EM_ARM => Some(TrailingPadding::TotalSizePowerOfTwo),
+            elf::abi::EM_RISCV => Some(TrailingPadding::TotalSizeMultiple(4)),
+            elf::abi::EM_386 => Some(TrailingPadding::TotalSizeMultiple(4096)),
+            _ => None,
+        }
     };
 
     ////////////////////////////////////////////////////////////////////////////
